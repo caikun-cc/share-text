@@ -1,0 +1,20 @@
+{
+  "name": "share-text",
+  "version": "1.0.0",
+  "description": "一个共享记事本应用，支持多用户实时协作编辑",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "koa": "^2.14.2",
+    "koa-static": "^5.0.0",
+    "ws": "^8.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "author": "ShareText",
+  "license": "MIT"
+}

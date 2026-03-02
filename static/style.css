@@ -1,0 +1,306 @@
+/* GitHub风格的黑色模式样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    background-color: #010409;
+    color: #b7bac1;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    position: relative;
+}
+
+#editor {
+    width: calc(100% - 250px);
+    height: 100%;
+    padding: 20px;
+    font-size: 16px;
+    border: none;
+    outline: none;
+    resize: none;
+    background-color: #0a0e14;
+    color: #adb0b8;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+#editor::placeholder {
+    color: #6e7681;
+}
+
+.sidebar {
+    width: 250px;
+    background-color: #0a0e14;
+    border-left: 1px solid #21262d;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.user-info-section {
+    margin-bottom: 15px;
+    background-color: transparent;
+    border-radius: 0;
+    border: none;
+    padding: 0;
+}
+
+.user-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.user-info-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #adb0b8;
+}
+
+.edit-user-btn {
+    background-color: #238636;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background-color 0.2s ease;
+}
+
+.edit-user-btn:hover {
+    background-color: #2ea043;
+}
+
+.user-details {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.user-detail-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.user-avatar-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.user-avatar-small {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.user-name-display {
+    font-size: 13px;
+    color: #adb0b8;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.online-users-section {
+    flex-grow: 1;
+    padding-top: 15px;
+    border-top: 1px solid #30363d;
+}
+
+.online-users-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #adb0b8;
+}
+
+.user-list {
+    list-style: none;
+}
+
+.user-item {
+    padding: 8px;
+    margin-bottom: 5px;
+    background-color: #0d1117;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    border: 1px solid #21262d;
+}
+
+.user-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    margin-right: 8px;
+    font-weight: bold;
+}
+
+.user-name {
+    font-size: 14px;
+    color: #adb0b8;
+}
+
+.typing-indicator {
+    font-size: 12px;
+    color: #7d8590;
+    margin-top: 3px;
+    margin-left: 32px;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(1, 4, 9, 0.8);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background-color: #0d1117;
+    padding: 30px;
+    border-radius: 6px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 8px 32px rgba(1, 4, 9, 0.5);
+    border: 1px solid #21262d;
+}
+
+.modal-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #adb0b8;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+    color: #adb0b8;
+    font-size: 14px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    background-color: #010409;
+    color: #adb0b8;
+    font-size: 14px;
+    transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #8b949e;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+}
+
+.btn-primary {
+    background-color: #238636;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #2ea043;
+}
+
+.btn-secondary {
+    background-color: #30363d;
+    color: #e6edf3;
+}
+
+.btn-secondary:hover {
+    background-color: #3d444d;
+}
+
+.connection-status {
+    position: absolute;
+    top: 10px;
+    right: 270px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: white;
+    font-weight: 500;
+}
+
+.connected {
+    background-color: #238636;
+}
+
+.disconnected {
+    background-color: #da3633;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #010409;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #8b949e;
+}
