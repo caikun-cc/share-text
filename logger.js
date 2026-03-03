@@ -56,14 +56,14 @@ class Logger {
     const timestamp = formatTimestamp();
     const color = logColors[level] || COLORS.RESET;
     const levelStr = level.padEnd(5);
-    
+
     let logMessage = `${color}[${timestamp}] [${levelStr}]${COLORS.RESET} ${message}`;
-    
+
     // 如果有元数据，添加到日志中
     if (Object.keys(meta).length > 0) {
       logMessage += ` | Meta: ${JSON.stringify(meta)}`;
     }
-    
+
     if (level === LogLevel.ERROR) {
       console.error(logMessage);
     } else if (level === LogLevel.WARN) {

@@ -20,8 +20,15 @@ const wss = new WebSocket.Server({ server, path: '/ws' });
 // 共享记事本内容
 let sharedContent = '';
 
-// 存储所有连接的用户
+// 全局版本号
+let globalVersion = 0;
+
+// 存储所有连接的用户（包含光标位置）
 const users = new Map();
+
+// 操作历史（保留最近100条用于新用户同步）
+const operationHistory = [];
+const MAX_HISTORY = 100;
 
 // 广播消息给所有连接的客户端
 function broadcast(message, excludeClient = null) {
@@ -38,6 +45,24 @@ function broadcastUsers(excludeClient = null) {
     broadcast({ type: 'users', users: userList }, excludeClient);
 }
 
+// 应用操作到内容
+function applyOperation(content, operation) {
+    if (operation.type === 'insert') {
+        return content.slice(0, operation.position) + operation.content + content.slice(operation.position);
+    } else if (operation.type === 'delete') {
+        return content.slice(0, operation.position) + content.slice(operation.position + operation.length);
+    }
+    return content;
+}
+
+// 记录操作到历史
+function recordOperation(operation) {
+    operationHistory.push(operation);
+    if (operationHistory.length > MAX_HISTORY) {
+        operationHistory.shift();
+    }
+}
+
 // WebSocket连接处理
 wss.on('connection', (ws, req) => {
     logger.info(`New client connected: ${req.socket.remoteAddress}`);
@@ -46,6 +71,7 @@ wss.on('connection', (ws, req) => {
     ws.send(JSON.stringify({
         type: 'init',
         content: sharedContent,
+        version: globalVersion,
         users: Array.from(users.values())
     }));
 
@@ -72,7 +98,7 @@ wss.on('connection', (ws, req) => {
                     break;
 
                 case 'update':
-                    // 内容更新
+                    // 内容更新（兼容旧版本，仍保留）
                     sharedContent = message.content || '';
                     logger.info(`Content updated (${(message.content || '').length} characters)`);
 
@@ -84,6 +110,44 @@ wss.on('connection', (ws, req) => {
                     }, ws);
                     break;
 
+                case 'operation':
+                    // OT操作更新
+                    const op = message.operation;
+                    if (!op || !op.type) {
+                        logger.warn('Invalid operation received');
+                        break;
+                    }
+
+                    // 应用操作
+                    sharedContent = applyOperation(sharedContent, op);
+                    globalVersion++;
+
+                    // 记录操作
+                    const recordedOp = {
+                        ...op,
+                        version: globalVersion,
+                        userId: message.userId,
+                        timestamp: Date.now()
+                    };
+                    recordOperation(recordedOp);
+
+                    logger.info(`Operation applied: ${op.type} at ${op.position}, version: ${globalVersion}`);
+
+                    // 广播操作给其他客户端
+                    broadcast({
+                        type: 'operation',
+                        operation: recordedOp,
+                        userId: message.userId
+                    }, ws);
+
+                    // 发送确认给操作者
+                    ws.send(JSON.stringify({
+                        type: 'ack',
+                        version: globalVersion,
+                        operationId: message.operationId
+                    }));
+                    break;
+
                 case 'typing':
                     // 正在输入状态
                     broadcast({
@@ -91,6 +155,24 @@ wss.on('connection', (ws, req) => {
                         userId: message.userId,
                         isTyping: message.isTyping
                     }, ws);
+                    break;
+
+                case 'cursor':
+                    // 光标位置更新
+                    if (users.has(ws)) {
+                        const user = users.get(ws);
+                        user.cursorPosition = message.position;
+                        users.set(ws, user);
+
+                        // 广播光标位置给其他客户端
+                        broadcast({
+                            type: 'cursor',
+                            userId: message.userId,
+                            username: user.username,
+                            color: user.color,
+                            position: message.position
+                        }, ws);
+                    }
                     break;
 
                 case 'userUpdate':

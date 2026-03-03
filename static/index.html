@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>共享记事本</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app">
         <header class="header">
@@ -38,7 +40,10 @@
         <main class="main-content">
             <div class="editor-wrapper">
                 <div class="editor-container">
-                    <textarea id="editor" placeholder="开始输入您的笔记..."></textarea>
+                    <div class="editor-scroll-container">
+                        <div id="cursor-layer" class="cursor-layer"></div>
+                        <textarea id="editor" placeholder="开始输入您的笔记..."></textarea>
+                    </div>
                     <div class="editor-footer">
                         <span class="char-count"><span id="char-count">0</span> 字符</span>
                     </div>
@@ -102,18 +107,30 @@
                 <div class="form-group">
                     <label class="form-label" for="input-color">头像颜色</label>
                     <div class="color-options">
-                        <button class="color-option" style="background: #ff6b6b" data-color="#ff6b6b" onclick="selectColor('#ff6b6b')"></button>
-                        <button class="color-option" style="background: #ff8787" data-color="#ff8787" onclick="selectColor('#ff8787')"></button>
-                        <button class="color-option" style="background: #ffa94d" data-color="#ffa94d" onclick="selectColor('#ffa94d')"></button>
-                        <button class="color-option" style="background: #ffd43b" data-color="#ffd43b" onclick="selectColor('#ffd43b')"></button>
-                        <button class="color-option" style="background: #69db7c" data-color="#69db7c" onclick="selectColor('#69db7c')"></button>
-                        <button class="color-option" style="background: #38d9a9" data-color="#38d9a9" onclick="selectColor('#38d9a9')"></button>
-                        <button class="color-option" style="background: #4dabf7" data-color="#4dabf7" onclick="selectColor('#4dabf7')"></button>
-                        <button class="color-option" style="background: #748ffc" data-color="#748ffc" onclick="selectColor('#748ffc')"></button>
-                        <button class="color-option" style="background: #b197fc" data-color="#b197fc" onclick="selectColor('#b197fc')"></button>
-                        <button class="color-option" style="background: #da77f2" data-color="#da77f2" onclick="selectColor('#da77f2')"></button>
-                        <button class="color-option" style="background: #ff922b" data-color="#ff922b" onclick="selectColor('#ff922b')"></button>
-                        <button class="color-option" style="background: #20c997" data-color="#20c997" onclick="selectColor('#20c997')"></button>
+                        <button class="color-option" style="background: #ff6b6b" data-color="#ff6b6b"
+                            onclick="selectColor('#ff6b6b')"></button>
+                        <button class="color-option" style="background: #ff8787" data-color="#ff8787"
+                            onclick="selectColor('#ff8787')"></button>
+                        <button class="color-option" style="background: #ffa94d" data-color="#ffa94d"
+                            onclick="selectColor('#ffa94d')"></button>
+                        <button class="color-option" style="background: #ffd43b" data-color="#ffd43b"
+                            onclick="selectColor('#ffd43b')"></button>
+                        <button class="color-option" style="background: #69db7c" data-color="#69db7c"
+                            onclick="selectColor('#69db7c')"></button>
+                        <button class="color-option" style="background: #38d9a9" data-color="#38d9a9"
+                            onclick="selectColor('#38d9a9')"></button>
+                        <button class="color-option" style="background: #4dabf7" data-color="#4dabf7"
+                            onclick="selectColor('#4dabf7')"></button>
+                        <button class="color-option" style="background: #748ffc" data-color="#748ffc"
+                            onclick="selectColor('#748ffc')"></button>
+                        <button class="color-option" style="background: #b197fc" data-color="#b197fc"
+                            onclick="selectColor('#b197fc')"></button>
+                        <button class="color-option" style="background: #da77f2" data-color="#da77f2"
+                            onclick="selectColor('#da77f2')"></button>
+                        <button class="color-option" style="background: #ff922b" data-color="#ff922b"
+                            onclick="selectColor('#ff922b')"></button>
+                        <button class="color-option" style="background: #20c997" data-color="#20c997"
+                            onclick="selectColor('#20c997')"></button>
                     </div>
                     <div class="color-picker-wrapper">
                         <input type="color" id="input-color" class="color-picker">
@@ -130,4 +147,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
