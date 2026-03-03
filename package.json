@@ -8,12 +8,12 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "koa": "^2.14.2",
+    "koa": "^3.1.2",
     "koa-static": "^5.0.0",
-    "ws": "^8.11.0"
+    "ws": "^8.19.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.20"
+    "nodemon": "^3.1.14"
   },
   "author": "ShareText",
   "license": "MIT"
