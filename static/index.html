@@ -7,51 +7,125 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <textarea id="editor" placeholder="开始输入您的笔记..."></textarea>
-        
-        <div class="sidebar">
-            <div class="user-info-section">
-                <div class="user-info-header">
-                    <div class="user-info-title">用户信息</div>
-                    <button class="edit-user-btn" onclick="openEditUserModal()">编辑</button>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span class="logo-text">共享记事本</span>
                 </div>
-                <div class="user-details">
-                    <div class="user-detail-item">
-                        <div class="user-avatar-display">
-                            <div id="display-avatar" class="user-avatar-small"></div>
-                            <span id="display-username" class="user-name-display"></span>
+            </div>
+            <div class="header-right">
+                <div class="preview-toggle">
+                    <span class="toggle-label">MD预览</span>
+                    <button id="preview-toggle-btn" class="toggle-btn" onclick="togglePreview()">
+                        <span class="toggle-slider"></span>
+                    </button>
+                </div>
+                <div id="connection-status" class="status-badge disconnected">
+                    <span class="status-dot"></span>
+                    <span class="status-text">已断开</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="editor-wrapper">
+                <div class="editor-container">
+                    <textarea id="editor" placeholder="开始输入您的笔记..."></textarea>
+                    <div class="editor-footer">
+                        <span class="char-count"><span id="char-count">0</span> 字符</span>
+                    </div>
+                </div>
+                <div id="preview-panel" class="preview-panel">
+                    <div class="preview-header">
+                        <span class="preview-title">预览</span>
+                    </div>
+                    <div id="preview-content" class="preview-content"></div>
+                </div>
+            </div>
+
+            <aside class="sidebar">
+                <div class="sidebar-section user-section">
+                    <div class="section-header">
+                        <h3 class="section-title">我的信息</h3>
+                        <button class="icon-btn" onclick="openEditUserModal()" title="编辑">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="user-card">
+                        <div id="display-avatar" class="user-avatar"></div>
+                        <div class="user-info">
+                            <span id="display-username" class="user-name">匿名用户</span>
+                            <span class="user-status">在线</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- 编辑用户信息模态框 -->
-            <div id="edit-user-modal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-title">编辑用户信息</div>
-                    <div class="form-group">
-                        <label class="form-label" for="input-username">用户名</label>
-                        <input type="text" id="input-username" class="form-input" placeholder="请输入用户名">
+                <div class="sidebar-section online-section">
+                    <div class="section-header">
+                        <h3 class="section-title">在线用户</h3>
+                        <span id="online-count" class="online-count">0</span>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="input-color">颜色</label>
-                        <input type="color" id="input-color" class="form-input">
+                    <ul id="user-list" class="user-list"></ul>
+                </div>
+            </aside>
+        </main>
+    </div>
+
+    <div id="edit-user-modal" class="modal">
+        <div class="modal-overlay" onclick="closeEditUserModal()"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">编辑用户信息</h2>
+                <button class="icon-btn" onclick="closeEditUserModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label" for="input-username">用户名</label>
+                    <input type="text" id="input-username" class="form-input" placeholder="请输入用户名">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="input-color">头像颜色</label>
+                    <div class="color-options">
+                        <button class="color-option" style="background: #ff6b6b" data-color="#ff6b6b" onclick="selectColor('#ff6b6b')"></button>
+                        <button class="color-option" style="background: #ff8787" data-color="#ff8787" onclick="selectColor('#ff8787')"></button>
+                        <button class="color-option" style="background: #ffa94d" data-color="#ffa94d" onclick="selectColor('#ffa94d')"></button>
+                        <button class="color-option" style="background: #ffd43b" data-color="#ffd43b" onclick="selectColor('#ffd43b')"></button>
+                        <button class="color-option" style="background: #69db7c" data-color="#69db7c" onclick="selectColor('#69db7c')"></button>
+                        <button class="color-option" style="background: #38d9a9" data-color="#38d9a9" onclick="selectColor('#38d9a9')"></button>
+                        <button class="color-option" style="background: #4dabf7" data-color="#4dabf7" onclick="selectColor('#4dabf7')"></button>
+                        <button class="color-option" style="background: #748ffc" data-color="#748ffc" onclick="selectColor('#748ffc')"></button>
+                        <button class="color-option" style="background: #b197fc" data-color="#b197fc" onclick="selectColor('#b197fc')"></button>
+                        <button class="color-option" style="background: #da77f2" data-color="#da77f2" onclick="selectColor('#da77f2')"></button>
+                        <button class="color-option" style="background: #ff922b" data-color="#ff922b" onclick="selectColor('#ff922b')"></button>
+                        <button class="color-option" style="background: #20c997" data-color="#20c997" onclick="selectColor('#20c997')"></button>
                     </div>
-                    <div class="form-actions">
-                        <button class="btn btn-secondary" onclick="closeEditUserModal()">取消</button>
-                        <button class="btn btn-primary" onclick="saveUserInfo()">保存</button>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="input-color" class="color-picker">
+                        <span id="color-preview" class="color-preview">#6366f1</span>
                     </div>
                 </div>
             </div>
-
-            <div class="online-users-section">
-                <div class="online-users-title">在线用户</div>
-                <ul id="user-list" class="user-list"></ul>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" onclick="closeEditUserModal()">取消</button>
+                <button class="btn btn-primary" onclick="saveUserInfo()">保存更改</button>
             </div>
         </div>
-
-        <div id="connection-status" class="connection-status disconnected">已断开连接</div>
     </div>
 
     <script src="script.js"></script>

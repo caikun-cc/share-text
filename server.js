@@ -40,7 +40,7 @@ function broadcastUsers(excludeClient = null) {
 
 // WebSocket连接处理
 wss.on('connection', (ws, req) => {
-    logger.info(`新客户端连接: ${req.socket.remoteAddress}`);
+    logger.info(`New client connected: ${req.socket.remoteAddress}`);
 
     // 发送初始数据给新连接的客户端
     ws.send(JSON.stringify({
@@ -58,15 +58,15 @@ wss.on('connection', (ws, req) => {
                 case 'join':
                     // 用户加入
                     users.set(ws, message.user);
-                    logger.info(`用户 ${message.user.username} 加入`);
-                    
+                    logger.info(`User ${message.user.username} joined`);
+
                     // 广播用户加入消息
                     broadcast({
                         type: 'userJoined',
                         user: message.user,
                         users: Array.from(users.values())
                     });
-                    
+
                     // 广播更新后的用户列表
                     broadcastUsers();
                     break;
@@ -74,8 +74,8 @@ wss.on('connection', (ws, req) => {
                 case 'update':
                     // 内容更新
                     sharedContent = message.content || '';
-                    logger.info(`内容已更新 (${(message.content || '').length}字符)`);
-                    
+                    logger.info(`Content updated (${(message.content || '').length} characters)`);
+
                     // 广播更新给其他所有客户端
                     broadcast({
                         type: 'update',
@@ -97,8 +97,8 @@ wss.on('connection', (ws, req) => {
                     // 用户信息更新
                     if (users.has(ws)) {
                         users.set(ws, message.user);
-                        logger.info(`${message.user.username} 更新了信息`);
-                        
+                        logger.info(`${message.user.username} updated info`);
+
                         // 广播用户信息更新
                         broadcast({
                             type: 'userUpdate',
@@ -112,28 +112,28 @@ wss.on('connection', (ws, req) => {
                     // 用户主动离开（通过消息）
                     if (users.has(ws)) {
                         const user = users.get(ws);
-                        logger.info(`${user.username} 主动离开连接`);
-                        
+                        logger.info(`${user.username} left connection`);
+
                         // 删除用户
                         users.delete(ws);
-                        
+
                         // 广播用户离开消息
                         broadcast({
                             type: 'userLeft',
                             user: user,
                             users: Array.from(users.values())
                         });
-                        
+
                         // 广播更新后的用户列表
                         broadcastUsers();
                     }
                     break;
 
                 default:
-                    logger.warn(`未知的消息类型: ${message.type}`);
+                    logger.warn(`Unknown message type: ${message.type}`);
             }
         } catch (error) {
-            logger.error(`解析消息时出错: ${error.message || error}`);
+            logger.error(`Error parsing message: ${error.message || error}`);
         }
     });
 
@@ -141,18 +141,18 @@ wss.on('connection', (ws, req) => {
     ws.on('close', () => {
         if (users.has(ws)) {
             const user = users.get(ws);
-            logger.info(`${user.username} 断开连接`);
-            
+            logger.info(`${user.username} disconnected`);
+
             // 删除用户
             users.delete(ws);
-            
+
             // 广播用户离开消息
             broadcast({
                 type: 'userLeft',
                 user: user,
                 users: Array.from(users.values())
             });
-            
+
             // 广播更新后的用户列表
             broadcastUsers();
         }
@@ -160,21 +160,21 @@ wss.on('connection', (ws, req) => {
 
     // 处理连接错误
     ws.on('error', (error) => {
-        logger.error(`WebSocket错误: ${error.message || error}`);
+        logger.error(`WebSocket error: ${error.message || error}`);
         if (users.has(ws)) {
             const user = users.get(ws);
-            logger.error(`用户连接发生错误: ${user.username}`);
-            
+            logger.error(`User connection error: ${user.username}`);
+
             // 删除用户
             users.delete(ws);
-            
+
             // 广播用户离开消息
             broadcast({
                 type: 'userLeft',
                 user: user,
                 users: Array.from(users.values())
             });
-            
+
             // 广播更新后的用户列表
             broadcastUsers();
         }
@@ -182,10 +182,10 @@ wss.on('connection', (ws, req) => {
 });
 
 // 启动服务器
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8011;
 server.listen(PORT, () => {
-    logger.info(`Koa服务器运行在端口 ${PORT}`);
-    console.log(`访问地址: http://localhost:${PORT}`);
+    logger.info(`Koa server running on port ${PORT}`);
+    console.log(`Visit: http://localhost:${PORT}`);
 });
 
 module.exports = server;

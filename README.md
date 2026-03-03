@@ -5,16 +5,37 @@
 ## 功能特性
 
 - **实时协作编辑**：多个用户可以同时编辑同一个记事本，所有更改会实时同步到所有连接的客户端
-- **用户信息管理**：用户可以在右上角编辑自己的用户名和颜色偏好
-- **用户信息持久化**：用户信息自动保存在浏览器本地存储中，刷新页面后依然保持
-- **在线用户列表**：右侧显示当前在线的所有用户及其状态
+- **Markdown 预览**：支持 Markdown 语法实时预览，可通过开关独立控制显示
+- **用户信息管理**：用户可以在侧边栏编辑自己的用户名和颜色偏好
+- **预选颜色**：提供 12 种活泼的预选颜色，也支持自定义颜色
+- **用户信息持久化**：用户信息和预览设置自动保存在浏览器本地存储中
+- **在线用户列表**：侧边栏显示当前在线的所有用户及其状态
 - **输入状态指示**：可以看到哪些用户正在输入内容
 - **连接状态监控**：实时显示与服务器的连接状态
-- **GitHub黑色主题**：采用GitHub风格的黑色主题设计，更加护眼美观
+- **现代深色主题**：采用现代深色主题设计，简洁美观
+
+## Markdown 支持
+
+开启预览后支持以下 Markdown 语法：
+
+| 语法                       | 说明   |
+| ------------------------ | ---- |
+| `# H1` `## H2` `### H3`  | 标题   |
+| `**bold**`               | 加粗   |
+| `*italic*`               | 斜体   |
+| `***bold+italic***`      | 加粗斜体 |
+| `~~strikethrough~~`      | 删除线  |
+| `` `code` ``             | 行内代码 |
+| ``` ```code block``` ``` | 代码块  |
+| `- item` 或 `* item`      | 无序列表 |
+| `> quote`                | 引用   |
+| `[text](url)`            | 链接   |
+| `![alt](image-url)`      | 图片   |
+| `---`                    | 分隔线  |
 
 ## 技术架构
 
-- **前端**：原生HTML、CSS（GitHub黑色模式）、JavaScript，使用WebSocket进行实时通信
+- **前端**：原生 HTML、CSS、JavaScript，使用 WebSocket 进行实时通信
 - **后端**：Node.js + Koa.js + WebSocket
 
 ## 安装和部署
@@ -22,7 +43,7 @@
 ### 环境要求
 
 - Node.js (版本 >= 14.x)
-- npm (随Node.js一起安装)
+- npm (随 Node.js 一起安装)
 
 ### 安装步骤
 
@@ -30,7 +51,7 @@
    
    ```bash
    git clone <repository-url>
-   # 或者直接下载ZIP文件解压
+   # 或者直接下载 ZIP 文件解压
    ```
 
 2. **进入项目目录**
@@ -47,10 +68,9 @@
    
    这将安装以下依赖：
    
-   - `koa`: 用于创建Web服务器
+   - `koa`: 用于创建 Web 服务器
    - `koa-static`: 用于静态文件服务
-   - `ws`: 用于WebSocket实时通信
-   - `nodemon`: 用于开发模式下的热重载（可选）
+   - `ws`: 用于 WebSocket 实时通信
 
 4. **启动服务器**
    
@@ -62,11 +82,11 @@
    npm run dev
    ```
 
-### Docker部署（可选）
+### Docker 部署（可选）
 
-如果您的环境中安装了Docker，也可以使用Docker进行部署：
+如果您的环境中安装了 Docker，也可以使用 Docker 进行部署：
 
-1. **构建Docker镜像**
+1. **构建 Docker 镜像**
    
    ```bash
    docker build -t share-text .
@@ -84,15 +104,16 @@
 
 1. **启动应用**：按照上述步骤启动服务器
 2. **访问应用**：在浏览器中打开 `http://localhost:3000`
-3. **编辑内容**：在中央的大编辑区域可以直接输入和编辑内容
-4. **查看状态**：右上角显示连接状态，右侧显示在线用户列表
+3. **编辑内容**：在中央编辑区域可以直接输入和编辑内容
+4. **Markdown 预览**：点击顶部 "MD预览" 开关启用实时预览
+5. **查看状态**：顶部显示连接状态，右侧显示在线用户列表
 
 ### 用户信息管理
 
-1. **编辑用户信息**：点击右上角的"编辑"按钮
+1. **编辑用户信息**：点击侧边栏 "我的信息" 旁的编辑按钮
 2. **修改用户名**：在弹出的对话框中输入新的用户名
-3. **选择颜色**：使用颜色选择器选择代表您的颜色
-4. **保存设置**：点击"保存"按钮应用更改
+3. **选择颜色**：点击预选颜色或使用颜色选择器自定义颜色
+4. **保存设置**：点击 "保存更改" 按钮应用更改
 5. **信息持久化**：设置将自动保存到浏览器本地存储
 
 ### 协作功能
@@ -106,7 +127,7 @@
 
 ### 环境变量
 
-- `PORT`：指定服务器端口（默认为3000）
+- `PORT`：指定服务器端口（默认为 3000）
 - `NODE_ENV`：指定环境模式（production/development）
 
 示例：
@@ -115,33 +136,23 @@
 PORT=8080 NODE_ENV=production npm start
 ```
 
-### 自定义配置
-
-您可以在 `package.json` 中修改以下配置：
-
-- `main`：主服务器文件路径
-- `scripts.start`：启动命令
-- `scripts.dev`：开发模式命令
-
 ## 项目结构
 
 ```
 share-text/
-├── server.js         # Koa.js服务器主文件
+├── server.js         # Koa.js 服务器主文件
 ├── logger.js         # 服务器端日志工具
 ├── package.json      # 项目配置和依赖
-├── package-lock.json # 依赖锁定文件
 ├── static/           # 静态资源目录
 │   ├── index.html    # 前端页面
-│   ├── style.css     # 样式文件 (GitHub黑色模式)
-│   ├── script.js     # JavaScript文件
-│   └── logger.js     # 前端日志工具
+│   ├── style.css     # 样式文件
+│   └── script.js     # JavaScript 文件
 └── README.md         # 项目说明文档
 ```
 
-## API接口
+## API 接口
 
-### WebSocket端点
+### WebSocket 端点
 
 - **URL**: `/ws`
 - **协议**: WebSocket
@@ -151,131 +162,25 @@ share-text/
 
 #### 客户端发送消息
 
-1. **join** - 用户加入
-   
-   ```json
-   {
-     "type": "join",
-     "user": {
-       "id": "user_id",
-       "username": "用户名",
-       "color": "#颜色代码"
-     }
-   }
-   ```
-
-2. **update** - 内容更新
-   
-   ```json
-   {
-     "type": "update",
-     "content": "记事本内容",
-     "userId": "用户ID"
-   }
-   ```
-
-3. **typing** - 正在输入状态
-   
-   ```json
-   {
-     "type": "typing",
-     "isTyping": true,
-     "userId": "用户ID"
-   }
-   ```
-
-4. **userUpdate** - 用户信息更新
-   
-   ```json
-   {
-     "type": "userUpdate",
-     "user": {
-       "id": "user_id",
-       "username": "新用户名",
-       "color": "#新颜色代码"
-     }
-   }
-   ```
-
-5. **leave** - 用户离开
-   
-   ```json
-   {
-     "type": "leave",
-     "userId": "用户ID"
-   }
-   ```
+| 类型           | 说明     |
+| ------------ | ------ |
+| `join`       | 用户加入   |
+| `update`     | 内容更新   |
+| `typing`     | 正在输入状态 |
+| `userUpdate` | 用户信息更新 |
+| `leave`      | 用户离开   |
 
 #### 服务器发送消息
 
-1. **init** - 初始化数据
-   
-   ```json
-   {
-     "type": "init",
-     "content": "当前记事本内容",
-     "users": [用户列表]
-   }
-   ```
-
-2. **update** - 内容更新通知
-   
-   ```json
-   {
-     "type": "update",
-     "content": "新内容",
-     "userId": "发送者ID"
-   }
-   ```
-
-3. **users** - 用户列表更新
-   
-   ```json
-   {
-     "type": "users",
-     "users": [当前在线用户列表]
-   }
-   ```
-
-4. **userJoined** - 用户加入通知
-   
-   ```json
-   {
-     "type": "userJoined",
-     "user": {用户信息},
-     "users": [更新后的用户列表]
-   }
-   ```
-
-5. **userLeft** - 用户离开通知
-   
-   ```json
-   {
-     "type": "userLeft",
-     "user": {用户信息},
-     "users": [更新后的用户列表]
-   }
-   ```
-
-6. **userUpdate** - 用户信息更新通知
-   
-   ```json
-   {
-     "type": "userUpdate",
-     "user": {更新后的用户信息},
-     "users": [更新后的用户列表]
-   }
-   ```
-
-7. **typing** - 正在输入状态通知
-   
-   ```json
-   {
-     "type": "typing",
-     "userId": "用户ID",
-     "isTyping": true
-   }
-   ```
+| 类型           | 说明       |
+| ------------ | -------- |
+| `init`       | 初始化数据    |
+| `update`     | 内容更新通知   |
+| `users`      | 用户列表更新   |
+| `userJoined` | 用户加入通知   |
+| `userLeft`   | 用户离开通知   |
+| `userUpdate` | 用户信息更新通知 |
+| `typing`     | 正在输入状态通知 |
 
 ## 故障排除
 
@@ -287,11 +192,11 @@ share-text/
    - 确认端口未被其他程序占用
    - 检查防火墙设置
 
-2. **连接状态显示"已断开连接"**
+2. **连接状态显示"已断开"**
    
-   - 确保通过HTTP协议访问（不是file://）
+   - 确保通过 HTTP 协议访问（不是 file://）
    - 检查浏览器控制台是否有错误信息
-   - 确认WebSocket连接未被代理或防火墙阻止
+   - 确认 WebSocket 连接未被代理或防火墙阻止
 
 3. **内容不同步**
    
@@ -299,30 +204,11 @@ share-text/
    - 检查网络连接是否稳定
    - 查看服务器日志是否有错误
 
-4. **用户信息不保存**
-   
-   - 确认浏览器启用了localStorage
-   - 检查浏览器隐私设置
-   - 尝试清除缓存后重新加载
-
-### 开发调试
-
-1. **服务器日志**：服务器启动后会显示连接信息和各种操作日志
-2. **浏览器控制台**：按F12打开开发者工具查看前端日志
-3. **网络面板**：检查WebSocket连接状态和消息传输
-
-## 依赖项
-
-- `koa`: 用于创建Web服务器
-- `koa-static`: 用于静态文件服务
-- `ws`: 用于WebSocket实时通信
-- `nodemon`: 用于开发模式下的热重载
-
 ## 数据持久化
 
 - **用户信息**：通过浏览器的 localStorage API 保存在本地
+- **预览设置**：Markdown 预览开关状态保存在本地
 - **记事本内容**：保存在服务器内存中，重启后会丢失
-- **连接状态**：每次连接时重新初始化
 
 ## 浏览器兼容性
 
@@ -333,30 +219,6 @@ share-text/
 - Safari (版本 >= 12)
 - Edge (版本 >= 79)
 
-## 开发模式
-
-如果需要实时重载功能，可以使用以下命令启动开发模式：
-
-```bash
-npm run dev
-```
-
-（需要先安装 nodemon: `npm install -g nodemon`）
-
-## 贡献指南
-
-1. Fork 项目
-2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启 Pull Request
-
 ## 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 致谢
-
-- 感谢所有贡献者的努力
-- 感谢开源社区的支持
-- 特别感谢 Koa.js 和 ws 库的开发者
+本项目采用 MIT 许可证。
