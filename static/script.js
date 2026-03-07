@@ -21,6 +21,11 @@ let lastContent = '';           // 上次的内容（用于差异计算）
 let operationIdCounter = 0;     // 操作ID计数器
 let isApplyingRemoteOp = false; // 是否正在应用远程操作
 
+// IME 组合输入状态
+let isComposing = false;        // 是否正在输入法组合输入
+let contentBeforeCompose = '';  // 组合输入前的内容
+let pendingInputTimeout = null; // 延迟处理 input 的定时器
+
 const editor = document.getElementById('editor');
 const userList = document.getElementById('user-list');
 const displayUsername = document.getElementById('display-username');
@@ -42,7 +47,7 @@ function initApp() {
     initPreview();
     connectWebSocket();
 
-    editor.addEventListener('input', function () {
+    editor.addEventListener('input', function (e) {
         updateCharCount();
         updatePreview();
 
@@ -52,43 +57,109 @@ function initApp() {
             return;
         }
 
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            // 计算差异操作
-            const operations = computeDiffOperations(lastContent, editor.value);
+        // 检查是否是 IME 组合输入
+        // 使用 inputType 检测组合输入是最可靠的方法
+        if (e && e.inputType === 'insertCompositionText') {
+            return;
+        }
 
-            operations.forEach(op => {
-                // 调整操作位置（考虑待确认操作）
-                const adjustedOp = adjustOperationForPending(op);
+        // 如果正在组合输入，跳过
+        if (isComposing) {
+            return;
+        }
 
-                const operationId = 'op_' + (++operationIdCounter);
+        // 使用延迟处理，等待可能的 compositionstart 事件
+        // 如果在短时间内触发了 compositionstart，则取消这次 input 处理
+        if (pendingInputTimeout) {
+            clearTimeout(pendingInputTimeout);
+        }
 
-                // 添加到待确认队列
-                pendingOps.push({
-                    id: operationId,
-                    operation: adjustedOp
-                });
-
-                // 发送操作
-                ws.send(JSON.stringify({
-                    type: 'operation',
-                    operation: adjustedOp,
-                    operationId: operationId,
-                    userId: currentUser.id
-                }));
-            });
-
-            lastContent = editor.value;
-
-            sendTypingStatus(true);
-
-            if (window.typingTimeout) {
-                clearTimeout(window.typingTimeout);
+        pendingInputTimeout = setTimeout(function () {
+            pendingInputTimeout = null;
+            
+            // 再次检查是否正在组合输入
+            if (isComposing || isApplyingRemoteOp) {
+                return;
             }
 
-            window.typingTimeout = setTimeout(() => {
-                sendTypingStatus(false);
-            }, 1000);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const operations = computeDiffOperations(lastContent, editor.value);
+
+                operations.forEach(op => {
+                    const adjustedOp = adjustOperationForPending(op);
+                    const operationId = 'op_' + (++operationIdCounter);
+
+                    pendingOps.push({
+                        id: operationId,
+                        operation: adjustedOp
+                    });
+
+                    ws.send(JSON.stringify({
+                        type: 'operation',
+                        operation: adjustedOp,
+                        operationId: operationId,
+                        userId: currentUser.id,
+                        version: localVersion
+                    }));
+                });
+
+                lastContent = editor.value;
+
+                sendTypingStatus(true);
+
+                if (window.typingTimeout) {
+                    clearTimeout(window.typingTimeout);
+                }
+
+                window.typingTimeout = setTimeout(() => {
+                    sendTypingStatus(false);
+                }, 1000);
+            }
+        }, 10); // 10ms 延迟，足够让 compositionstart 事件触发
+    });
+
+    // IME 组合输入开始
+    editor.addEventListener('compositionstart', function () {
+        // 取消待处理的 input 事件
+        if (pendingInputTimeout) {
+            clearTimeout(pendingInputTimeout);
+            pendingInputTimeout = null;
         }
+        isComposing = true;
+        contentBeforeCompose = lastContent;
+    });
+
+    // IME 组合输入结束
+    editor.addEventListener('compositionend', function () {
+        // 延迟处理，确保在最终的 input 事件之前完成
+        setTimeout(function () {
+            isComposing = false;
+            
+            // 计算组合输入完成后的差异并发送
+            if (ws && ws.readyState === WebSocket.OPEN && !isApplyingRemoteOp) {
+                const operations = computeDiffOperations(contentBeforeCompose, editor.value);
+
+                operations.forEach(op => {
+                    const adjustedOp = adjustOperationForPending(op);
+                    const operationId = 'op_' + (++operationIdCounter);
+
+                    pendingOps.push({
+                        id: operationId,
+                        operation: adjustedOp
+                    });
+
+                    ws.send(JSON.stringify({
+                        type: 'operation',
+                        operation: adjustedOp,
+                        operationId: operationId,
+                        userId: currentUser.id,
+                        version: localVersion
+                    }));
+                });
+
+                lastContent = editor.value;
+            }
+        }, 0);
     });
 
     // 监听光标位置变化
@@ -295,7 +366,6 @@ function handleMessage(data) {
             break;
 
         case 'update':
-            // 兼容旧版本的全量更新
             if (data.userId !== currentUser.id) {
                 isApplyingRemoteOp = true;
                 const savedCursor = {
@@ -304,7 +374,6 @@ function handleMessage(data) {
                 };
                 editor.value = data.content || '';
                 lastContent = editor.value;
-                // 尝试恢复光标位置
                 editor.selectionStart = Math.min(savedCursor.start, editor.value.length);
                 editor.selectionEnd = Math.min(savedCursor.end, editor.value.length);
                 isApplyingRemoteOp = false;
@@ -315,14 +384,12 @@ function handleMessage(data) {
             break;
 
         case 'operation':
-            // OT 操作更新
             if (data.userId !== currentUser.id) {
-                handleRemoteOperation(data.operation);
+                handleRemoteOperation(data.operation, data.userId);
             }
             break;
 
         case 'ack':
-            // 操作确认
             handleAck(data);
             break;
 
@@ -337,7 +404,6 @@ function handleMessage(data) {
 
         case 'userLeft':
             console.log(`用户 ${data.user.username} 离开`);
-            // 清理该用户的光标
             delete userCursors[data.user.id];
             renderRemoteCursors();
             updateUserList(data.users || []);
@@ -352,7 +418,6 @@ function handleMessage(data) {
             break;
 
         case 'cursor':
-            // 更新其他用户的光标位置
             if (data.userId !== currentUser.id) {
                 userCursors[data.userId] = {
                     username: data.username,
@@ -794,49 +859,65 @@ function adjustOperationForPending(op) {
 
 /**
  * 操作转换函数（OT核心）
- * 将远程操作转换，使其能正确应用于本地状态
+ * 将本地操作转换，使其能正确应用于远程操作之后的状态
  */
-function transformOperation(localOp, remoteOp) {
-    if (localOp.type === 'insert') {
+function transformOperation(localOp, remoteOp, remoteUserId) {
+    const transformedOp = { ...localOp };
+    
+    if (transformedOp.type === 'insert') {
         if (remoteOp.type === 'insert') {
-            // 两个插入操作
-            if (remoteOp.position < localOp.position) {
-                localOp.position += remoteOp.content.length;
-            } else if (remoteOp.position === localOp.position) {
-                // 相同位置，使用用户ID作为决胜
-                if (remoteOp.userId < currentUser.id) {
-                    localOp.position += remoteOp.content.length;
+            // 两个插入操作：如果远程插入在本地插入之前，本地插入位置后移
+            if (remoteOp.position < transformedOp.position) {
+                transformedOp.position += remoteOp.content.length;
+            } else if (remoteOp.position === transformedOp.position) {
+                // 相同位置，使用用户ID作为决胜，确保一致性
+                if (remoteUserId && remoteUserId < currentUser.id) {
+                    transformedOp.position += remoteOp.content.length;
                 }
             }
         } else if (remoteOp.type === 'delete') {
-            if (remoteOp.position + remoteOp.length <= localOp.position) {
-                localOp.position -= remoteOp.length;
-            } else if (remoteOp.position < localOp.position) {
-                localOp.position = remoteOp.position;
+            // 远程删除：如果删除范围在本地插入位置之前，本地插入位置前移
+            if (remoteOp.position + remoteOp.length <= transformedOp.position) {
+                transformedOp.position -= remoteOp.length;
+            } else if (remoteOp.position < transformedOp.position) {
+                // 如果删除范围包含本地插入位置，本地插入位置移到删除开始位置
+                transformedOp.position = remoteOp.position;
             }
         }
-    } else if (localOp.type === 'delete') {
+    } else if (transformedOp.type === 'delete') {
         if (remoteOp.type === 'insert') {
-            if (remoteOp.position <= localOp.position) {
-                localOp.position += remoteOp.content.length;
+            // 远程插入：如果插入在本地删除范围之前，本地删除位置后移
+            if (remoteOp.position <= transformedOp.position) {
+                transformedOp.position += remoteOp.content.length;
+            } else if (remoteOp.position < transformedOp.position + transformedOp.length) {
+                // 如果插入在本地删除范围内，本地删除长度增加
+                transformedOp.length += remoteOp.content.length;
             }
         } else if (remoteOp.type === 'delete') {
-            if (remoteOp.position + remoteOp.length <= localOp.position) {
-                localOp.position -= remoteOp.length;
-            } else if (remoteOp.position < localOp.position + localOp.length) {
-                // 有重叠，需要调整删除范围
-                const overlapStart = Math.max(remoteOp.position, localOp.position);
-                const overlapEnd = Math.min(remoteOp.position + remoteOp.length, localOp.position + localOp.length);
-                const overlapLen = overlapEnd - overlapStart;
-                localOp.length -= overlapLen;
-                if (remoteOp.position < localOp.position) {
-                    localOp.position = remoteOp.position;
+            // 两个删除操作：调整本地删除位置和长度
+            if (remoteOp.position + remoteOp.length <= transformedOp.position) {
+                // 远程删除在本地删除之前，本地删除位置前移
+                transformedOp.position -= remoteOp.length;
+            } else if (remoteOp.position < transformedOp.position) {
+                // 远程删除覆盖了本地删除的开始部分
+                const overlapLen = remoteOp.position + remoteOp.length - transformedOp.position;
+                transformedOp.position = remoteOp.position;
+                transformedOp.length -= overlapLen;
+                if (transformedOp.length < 0) {
+                    transformedOp.length = 0;
+                }
+            } else if (remoteOp.position < transformedOp.position + transformedOp.length) {
+                // 远程删除与本地删除有重叠
+                const overlapLen = Math.min(remoteOp.position + remoteOp.length, transformedOp.position + transformedOp.length) - remoteOp.position;
+                transformedOp.length -= overlapLen;
+                if (transformedOp.length < 0) {
+                    transformedOp.length = 0;
                 }
             }
         }
     }
 
-    return localOp;
+    return transformedOp;
 }
 
 /**
@@ -857,10 +938,20 @@ function applyOperationToLocal(op) {
     return newContent;
 }
 
+function applyOperationToContent(content, op) {
+    if (op.type === 'insert') {
+        return content.slice(0, op.position) + op.content + content.slice(op.position);
+    } else if (op.type === 'delete') {
+        return content.slice(0, op.position) + content.slice(op.position + op.length);
+    }
+    return content;
+}
+
 /**
  * 处理远程操作
+ * 服务器已经对操作进行了 OT 转换，客户端只需要处理待确认操作
  */
-function handleRemoteOperation(remoteOp) {
+function handleRemoteOperation(remoteOp, remoteUserId) {
     isApplyingRemoteOp = true;
 
     // 保存当前光标位置
@@ -869,42 +960,57 @@ function handleRemoteOperation(remoteOp) {
         end: editor.selectionEnd
     };
 
-    // 对所有待确认操作进行转换
+    // 步骤1：将远程操作转换到包含待确认操作的状态
+    let adjustedRemoteOp = { ...remoteOp };
+    for (const pending of pendingOps) {
+        const pendingOp = pending.operation;
+        if (pendingOp.type === 'insert' && pendingOp.position <= adjustedRemoteOp.position) {
+            adjustedRemoteOp.position += pendingOp.content.length;
+        } else if (pendingOp.type === 'delete' && pendingOp.position < adjustedRemoteOp.position) {
+            adjustedRemoteOp.position = Math.max(pendingOp.position, adjustedRemoteOp.position - pendingOp.length);
+        }
+    }
+
+    // 步骤2：将待确认操作转换到包含远程操作的状态
     for (let i = 0; i < pendingOps.length; i++) {
         pendingOps[i].operation = transformOperation(
             { ...pendingOps[i].operation },
-            remoteOp
+            remoteOp,
+            remoteUserId
         );
     }
 
-    // 应用远程操作到本地
-    const newContent = applyOperationToLocal(remoteOp);
+    // 步骤3：应用调整后的远程操作到本地
+    const newContent = applyOperationToLocal(adjustedRemoteOp);
     editor.value = newContent;
     lastContent = newContent;
+
+    // 如果正在 IME 组合输入，同步更新 contentBeforeCompose
+    if (isComposing) {
+        contentBeforeCompose = applyOperationToContent(contentBeforeCompose, adjustedRemoteOp);
+    }
 
     // 调整光标位置
     let newStart = cursorPos.start;
     let newEnd = cursorPos.end;
 
-    if (remoteOp.type === 'insert') {
-        if (remoteOp.position <= cursorPos.start) {
-            newStart += remoteOp.content.length;
-            newEnd += remoteOp.content.length;
+    if (adjustedRemoteOp.type === 'insert') {
+        if (adjustedRemoteOp.position <= cursorPos.start) {
+            newStart += adjustedRemoteOp.content.length;
+            newEnd += adjustedRemoteOp.content.length;
         }
-    } else if (remoteOp.type === 'delete') {
-        if (remoteOp.position + remoteOp.length <= cursorPos.start) {
-            newStart -= remoteOp.length;
-            newEnd -= remoteOp.length;
-        } else if (remoteOp.position < cursorPos.start) {
-            newStart = remoteOp.position;
-            newEnd = Math.max(remoteOp.position, newEnd - remoteOp.length);
+    } else if (adjustedRemoteOp.type === 'delete') {
+        if (adjustedRemoteOp.position + adjustedRemoteOp.length <= cursorPos.start) {
+            newStart -= adjustedRemoteOp.length;
+            newEnd -= adjustedRemoteOp.length;
+        } else if (adjustedRemoteOp.position < cursorPos.start) {
+            newStart = adjustedRemoteOp.position;
+            newEnd = Math.max(adjustedRemoteOp.position, newEnd - adjustedRemoteOp.length);
         }
     }
 
     editor.selectionStart = Math.min(newStart, newContent.length);
     editor.selectionEnd = Math.min(newEnd, newContent.length);
-
-    localVersion++;
 
     updateCharCount();
     updatePreview();

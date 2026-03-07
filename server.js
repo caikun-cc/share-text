@@ -30,6 +30,57 @@ const users = new Map();
 const operationHistory = [];
 const MAX_HISTORY = 100;
 
+// 服务器端 OT 转换函数
+// 将 clientOp 转换，使其能正确应用于 serverOp 之后的状态
+function transformOperation(clientOp, serverOp, serverUserId, clientUserId) {
+    const transformedOp = { ...clientOp };
+    
+    if (transformedOp.type === 'insert') {
+        if (serverOp.type === 'insert') {
+            if (serverOp.position < transformedOp.position) {
+                transformedOp.position += serverOp.content.length;
+            } else if (serverOp.position === transformedOp.position) {
+                if (serverUserId < clientUserId) {
+                    transformedOp.position += serverOp.content.length;
+                }
+            }
+        } else if (serverOp.type === 'delete') {
+            if (serverOp.position + serverOp.length <= transformedOp.position) {
+                transformedOp.position -= serverOp.length;
+            } else if (serverOp.position < transformedOp.position) {
+                transformedOp.position = serverOp.position;
+            }
+        }
+    } else if (transformedOp.type === 'delete') {
+        if (serverOp.type === 'insert') {
+            if (serverOp.position <= transformedOp.position) {
+                transformedOp.position += serverOp.content.length;
+            } else if (serverOp.position < transformedOp.position + transformedOp.length) {
+                transformedOp.length += serverOp.content.length;
+            }
+        } else if (serverOp.type === 'delete') {
+            if (serverOp.position + serverOp.length <= transformedOp.position) {
+                transformedOp.position -= serverOp.length;
+            } else if (serverOp.position < transformedOp.position) {
+                const overlapLen = Math.min(serverOp.position + serverOp.length, transformedOp.position + transformedOp.length) - transformedOp.position;
+                transformedOp.position = serverOp.position;
+                transformedOp.length -= overlapLen;
+                if (transformedOp.length < 0) {
+                    transformedOp.length = 0;
+                }
+            } else if (serverOp.position < transformedOp.position + transformedOp.length) {
+                const overlapLen = Math.min(serverOp.position + serverOp.length, transformedOp.position + transformedOp.length) - serverOp.position;
+                transformedOp.length -= overlapLen;
+                if (transformedOp.length < 0) {
+                    transformedOp.length = 0;
+                }
+            }
+        }
+    }
+
+    return transformedOp;
+}
+
 // 广播消息给所有连接的客户端
 function broadcast(message, excludeClient = null) {
     wss.clients.forEach(client => {
@@ -118,33 +169,61 @@ wss.on('connection', (ws, req) => {
                         break;
                     }
 
-                    // 应用操作
-                    sharedContent = applyOperation(sharedContent, op);
+                    // 对操作进行 OT 转换（基于历史操作）
+                    let transformedOp = { ...op };
+                    const clientVersion = message.version || 0;
+                    
+                    // 如果操作版本落后，需要基于历史操作进行转换
+                    // 历史操作记录的是服务器实际应用的操作（转换后的操作）
+                    if (clientVersion < globalVersion) {
+                        const opsToTransform = operationHistory.filter(h => h.version > clientVersion);
+                        for (const historyOp of opsToTransform) {
+                            transformedOp = transformOperation(
+                                transformedOp, 
+                                historyOp, 
+                                historyOp.userId, 
+                                message.userId
+                            );
+                        }
+                        if (op.position !== transformedOp.position) {
+                            logger.info(`Operation transformed: ${op.type} at ${op.position} -> at ${transformedOp.position}`);
+                        }
+                    }
+
+                    // 应用转换后的操作
+                    sharedContent = applyOperation(sharedContent, transformedOp);
                     globalVersion++;
 
-                    // 记录操作
+                    // 记录转换后的操作（用于后续OT转换）
                     const recordedOp = {
-                        ...op,
+                        ...transformedOp,
                         version: globalVersion,
                         userId: message.userId,
                         timestamp: Date.now()
                     };
                     recordOperation(recordedOp);
 
-                    logger.info(`Operation applied: ${op.type} at ${op.position}, version: ${globalVersion}`);
+                    logger.info(`Operation applied: ${transformedOp.type} at ${transformedOp.position}, version: ${globalVersion}`);
 
-                    // 广播操作给其他客户端
+                    // 广播转换后的操作给其他客户端
                     broadcast({
                         type: 'operation',
-                        operation: recordedOp,
-                        userId: message.userId
+                        operation: {
+                            type: transformedOp.type,
+                            position: transformedOp.position,
+                            content: transformedOp.content,
+                            length: transformedOp.length
+                        },
+                        userId: message.userId,
+                        version: globalVersion
                     }, ws);
 
                     // 发送确认给操作者
                     ws.send(JSON.stringify({
                         type: 'ack',
                         version: globalVersion,
-                        operationId: message.operationId
+                        operationId: message.operationId,
+                        content: sharedContent  // 发送当前内容
                     }));
                     break;
 
