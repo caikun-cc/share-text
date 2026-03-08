@@ -30,6 +30,10 @@ const users = new Map();
 const operationHistory = [];
 const MAX_HISTORY = 100;
 
+// 聊天消息历史（保留最近50条）
+const chatMessages = [];
+const MAX_CHAT_MESSAGES = 50;
+
 // 服务器端 OT 转换函数
 // 将 clientOp 转换，使其能正确应用于 serverOp 之后的状态
 function transformOperation(clientOp, serverOp, serverUserId, clientUserId) {
@@ -123,7 +127,8 @@ wss.on('connection', (ws, req) => {
         type: 'init',
         content: sharedContent,
         version: globalVersion,
-        users: Array.from(users.values())
+        users: Array.from(users.values()),
+        chatHistory: chatMessages
     }));
 
     // 处理客户端消息
@@ -288,6 +293,36 @@ wss.on('connection', (ws, req) => {
                         // 广播更新后的用户列表
                         broadcastUsers();
                     }
+                    break;
+
+                case 'chat':
+                    // 聊天消息
+                    if (!message.content || !message.content.trim()) {
+                        break;
+                    }
+
+                    const chatMessage = {
+                        id: 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        user: users.has(ws) ? {
+                            id: users.get(ws).id,
+                            username: users.get(ws).username,
+                            color: users.get(ws).color
+                        } : { id: message.userId, username: '匿名用户', color: '#6366f1' },
+                        content: message.content.trim(),
+                        timestamp: Date.now()
+                    };
+
+                    chatMessages.push(chatMessage);
+                    if (chatMessages.length > MAX_CHAT_MESSAGES) {
+                        chatMessages.shift();
+                    }
+
+                    logger.info(`Chat message from ${chatMessage.user.username}: ${chatMessage.content}`);
+
+                    broadcast({
+                        type: 'chat',
+                        message: chatMessage
+                    });
                     break;
 
                 default:

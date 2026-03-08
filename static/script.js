@@ -176,6 +176,21 @@ function initApp() {
     inputColor.addEventListener('input', function () {
         colorPreview.textContent = this.value.toUpperCase();
     });
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChatMessage();
+            }
+        });
+
+        chatInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+    }
 }
 
 function updateCharCount() {
@@ -363,6 +378,7 @@ function handleMessage(data) {
             updateCharCount();
             updatePreview();
             updateUserList(data.users || []);
+            renderChatHistory(data.chatHistory || []);
             break;
 
         case 'update':
@@ -427,6 +443,10 @@ function handleMessage(data) {
                 };
                 renderRemoteCursors();
             }
+            break;
+
+        case 'chat':
+            appendChatMessage(data.message);
             break;
     }
 }
@@ -1029,4 +1049,107 @@ function handleAck(data) {
         pendingOps.splice(opIndex, 1);
     }
     localVersion = data.version;
+}
+
+function renderChatHistory(messages) {
+    const chatMessagesEl = document.getElementById('chat-messages');
+    if (!chatMessagesEl) return;
+
+    chatMessagesEl.innerHTML = '';
+
+    if (messages.length === 0) {
+        chatMessagesEl.innerHTML = '<div class="chat-empty">暂无消息</div>';
+        return;
+    }
+
+    messages.forEach(msg => {
+        appendChatMessage(msg, false);
+    });
+
+    chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function appendChatMessage(message, scroll = true) {
+    const chatMessagesEl = document.getElementById('chat-messages');
+    if (!chatMessagesEl) return;
+
+    const emptyEl = chatMessagesEl.querySelector('.chat-empty');
+    if (emptyEl) {
+        emptyEl.remove();
+    }
+
+    const isOwn = message.user.id === currentUser.id;
+
+    const msgEl = document.createElement('div');
+    msgEl.className = 'chat-message' + (isOwn ? ' own-message' : '');
+
+    const headerEl = document.createElement('div');
+    headerEl.className = 'chat-message-header';
+
+    const avatarEl = document.createElement('div');
+    avatarEl.className = 'chat-message-avatar';
+    avatarEl.style.backgroundColor = message.user.color;
+    avatarEl.style.color = getContrastColor(message.user.color);
+    avatarEl.textContent = message.user.username.charAt(0).toUpperCase();
+
+    const usernameEl = document.createElement('span');
+    usernameEl.className = 'chat-message-username';
+    usernameEl.textContent = message.user.username;
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'chat-message-time';
+    timeEl.textContent = formatChatTime(message.timestamp);
+
+    headerEl.appendChild(avatarEl);
+    headerEl.appendChild(usernameEl);
+    headerEl.appendChild(timeEl);
+
+    const bubbleEl = document.createElement('div');
+    bubbleEl.className = 'chat-message-bubble';
+    bubbleEl.textContent = message.content;
+
+    msgEl.appendChild(headerEl);
+    msgEl.appendChild(bubbleEl);
+
+    chatMessagesEl.appendChild(msgEl);
+
+    if (scroll) {
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+}
+
+function formatChatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+
+    if (isToday) {
+        return `${hours}:${minutes}`;
+    }
+
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${month}/${day} ${hours}:${minutes}`;
+}
+
+function sendChatMessage() {
+    const chatInput = document.getElementById('chat-input');
+    if (!chatInput) return;
+
+    const content = chatInput.value.trim();
+    if (!content) return;
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+            type: 'chat',
+            userId: currentUser.id,
+            content: content
+        }));
+
+        chatInput.value = '';
+        chatInput.style.height = 'auto';
+    }
 }
